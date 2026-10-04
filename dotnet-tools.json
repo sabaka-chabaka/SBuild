@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "sbuild.cli": {
+      "version": "1.0.7",
+      "commands": [
+        "sbuild"
+      ],
+      "rollForward": false
+    }
+  }
+}

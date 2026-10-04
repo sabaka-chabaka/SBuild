@@ -1,0 +1,8 @@
+<Solution>
+    <Folder Name="/src/">
+        <Project Path="src/SBuild.Cli/SBuild.Cli.csproj" />
+        <Project Path="src/SBuild.Compilation/SBuild.Compilation.csproj" />
+    </Folder>
+    <Folder Name="/tests/">   
+    </Folder>
+</Solution>

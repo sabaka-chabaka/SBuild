@@ -1,0 +1,70 @@
+name: SBuild Workflow
+
+on:
+  push:
+    branches: [ master ]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Run Tests
+        run: dotnet test --no-restore --configuration Release
+        
+  deploy-docs:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.ref == 'refs/heads/master'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0'
+
+      - name: Install DocFX tool
+        run: dotnet tool install -g docfx
+
+      - name: Meta
+        run: docfx metadata
+
+      - name: Run DocFX Build
+        run: docfx --logLevel Info
+
+      - name: Create .nojekyll
+        run: |
+          mkdir -p _site
+          touch _site/.nojekyll
+
+      - name: Clean old pages artifact
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: github-pages
+          failOnError: false
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
