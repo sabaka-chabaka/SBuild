@@ -14,7 +14,7 @@ public static class Compiler
     /// <param name="sourceCode">A source code to compile</param>
     /// <param name="outputPath">A path to save .dll and runtimeconfig.</param>
     /// <param name="createExe">Does it will executable.</param>
-    /// <returns></returns>
+    /// <returns>Result of compilation, true if successfully, false if failed.</returns>
     public static bool Compile(string sourceCode, string outputPath, bool createExe = false)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
