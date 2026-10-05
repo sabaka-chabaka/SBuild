@@ -2,6 +2,7 @@
     <Folder Name="/src/">
         <Project Path="src/SBuild.Cli/SBuild.Cli.csproj" />
         <Project Path="src/SBuild.Compilation/SBuild.Compilation.csproj" />
+        <Project Path="src/SBuild.Manifests/SBuild.Manifests.csproj" />
     </Folder>
     <Folder Name="/tests/">   
     </Folder>
