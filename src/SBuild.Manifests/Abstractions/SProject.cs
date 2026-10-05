@@ -33,9 +33,9 @@ public class SProject
     public bool Nullable { get; set; }
     
     /// <summary>
-    /// Project's references
+    /// Project's references paths.
     /// </summary>
-    public List<SProject> References { get; set; } = [];
+    public List<string> References { get; set; } = [];
     
     /// <summary>
     /// Root path of project based from solution like:

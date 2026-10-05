@@ -11,7 +11,7 @@ public class SSolution
     public string Name { get; set; } = string.Empty;
     
     /// <summary>
-    /// A list of solution's projects.
+    /// A list of solution's projects paths.
     /// </summary>
-    public List<SProject> Projects = [];
+    public List<string> Projects = [];
 }
