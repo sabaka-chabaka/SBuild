@@ -13,7 +13,7 @@ public static class AppActions
     /// </summary>
     /// <param name="path">Path to c# file.</param>
     /// <param name="isExecutable">Does .dll will executable.</param>
-    /// <returns></returns>
+    /// <returns>Lambda</returns>
     public static Func<ParseResult, CancellationToken, Task<int>> ExecuteBuildAsync(Option<string> path, Option<bool> isExecutable)
     {
         return async (parseResult, cancellationToken) =>
@@ -40,18 +40,21 @@ public static class AppActions
     
                 Compiler.Compile(source, assemblyOutputPath, parseResult.GetValue(isExecutable));
 
-                await File.Create(Path.Combine(outputDirectory, $"{fileNameWithoutExtension}.runtimeconfig.json")).DisposeAsync();
-                await File.WriteAllTextAsync(Path.Combine(outputDirectory, $"{fileNameWithoutExtension}.runtimeconfig.json"), """
-                    {
-                        "runtimeOptions": {
-                             "tfm": "net10.0",
-                            "framework": {
-                                "name": "Microsoft.NETCore.App",
-                                "version": "10.0.0"
+                if (parseResult.GetValue(isExecutable))
+                {
+                    await File.Create(Path.Combine(outputDirectory, $"{fileNameWithoutExtension}.runtimeconfig.json")).DisposeAsync();
+                    await File.WriteAllTextAsync(Path.Combine(outputDirectory, $"{fileNameWithoutExtension}.runtimeconfig.json"), """
+                        {
+                            "runtimeOptions": {
+                                 "tfm": "net10.0",
+                                "framework": {
+                                    "name": "Microsoft.NETCore.App",
+                                    "version": "10.0.0"
+                                }
                             }
                         }
-                    }
-                    """, cancellationToken);
+                        """, cancellationToken);
+                }
             }
 
             catch (Exception e)
