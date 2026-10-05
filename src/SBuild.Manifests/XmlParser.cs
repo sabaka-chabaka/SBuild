@@ -58,12 +58,15 @@ public static class XmlParser
 
         if (root == null) return solution;
         
-        solution.Name = root.Attribute("Name")!.Value;
+        solution.Name = root.Attribute("Name")?.Value ?? string.Empty;
             
         var projects = root.Elements("Project");
         foreach (var project in projects)
         {
-            solution.Projects.Add(project.Attribute("Path")!.Value);
+            if (project.Attribute("Path")?.Value is { } path)
+            {
+                solution.Projects.Add(path);
+            }
         }
 
         return solution;
