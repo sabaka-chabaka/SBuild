@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using SBuild.Compilation;
 
 namespace SBuild.Cli;
@@ -37,6 +38,7 @@ internal static class ConsoleReporter
             if (!quiet)
             {
                 Success($"  {result.Project.Name} -> {result.OutputPath}");
+                Info($"Assembly checksum: {Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(result.OutputPath))).ToLowerInvariant()}");
             }
 
             return;
@@ -73,7 +75,7 @@ internal static class ConsoleReporter
 
         if (failed == 0)
         {
-            Success($"Сборка успешно завершена. Projects: {summary.Results.Count}, warns: {warnings}.");
+            Success($"Build successful. Projects: {summary.Results.Count}, warns: {warnings}.");
         }
         else
         {
