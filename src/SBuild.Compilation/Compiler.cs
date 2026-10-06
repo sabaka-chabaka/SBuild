@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
@@ -9,72 +10,128 @@ namespace SBuild.Compilation;
 public static class Compiler
 {
     /// <summary>
-    /// A main function for compiling sources to .dll.
+    /// Compiles a set of source files into a single assembly.
+    /// Files are written to disk only when compilation succeeds.
+    /// </summary>
+    /// <param name="request">Sources, references and options.</param>
+    /// <param name="cancellationToken">Cancels compilation.</param>
+    /// <returns>Result with compiler diagnostics.</returns>
+    public static CompilationResult Compile(CompilationRequest request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (request.Sources.Count == 0)
+        {
+            return Failure("Нет исходных файлов для компиляции.");
+        }
+
+        if (ReferenceAssemblies.Framework.Count == 0)
+        {
+            return Failure("Не удалось найти базовые сборки .NET рядом с SBuild.");
+        }
+
+        var parseOptions = new CSharpParseOptions(LanguageVersion.Latest);
+
+        var syntaxTrees = new List<SyntaxTree>(request.Sources.Count + 1);
+        foreach (var source in request.Sources)
+        {
+            syntaxTrees.Add(CSharpSyntaxTree.ParseText(source.Text, parseOptions, source.Path, Encoding.UTF8));
+        }
+
+        if (request.ImplicitUsings)
+        {
+            syntaxTrees.Add(ImplicitUsingsGenerator.CreateSyntaxTree(parseOptions));
+        }
+
+        var references = new List<MetadataReference>(ReferenceAssemblies.Framework);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var reference in request.References)
+        {
+            var full = Path.GetFullPath(reference);
+
+            if (!File.Exists(full))
+            {
+                return Failure($"Сборка '{full}' не найдена.");
+            }
+
+            if (seen.Add(full))
+            {
+                references.Add(MetadataReference.CreateFromFile(full));
+            }
+        }
+
+        var options = new CSharpCompilationOptions(
+            request.IsExecutable ? OutputKind.ConsoleApplication : OutputKind.DynamicallyLinkedLibrary,
+            optimizationLevel: OptimizationLevel.Release,
+            allowUnsafe: false,
+            nullableContextOptions: request.Nullable ? NullableContextOptions.Enable : NullableContextOptions.Disable,
+            deterministic: true);
+
+        var outputPath = Path.GetFullPath(request.OutputPath);
+        var compilation = CSharpCompilation.Create(
+            Path.GetFileNameWithoutExtension(outputPath),
+            syntaxTrees,
+            references,
+            options);
+
+        using var peStream = new MemoryStream();
+        using var pdbStream = new MemoryStream();
+
+        var emitResult = compilation.Emit(peStream, pdbStream, cancellationToken: cancellationToken);
+
+        var diagnostics = emitResult.Diagnostics
+            .Where(d => d.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Warning)
+            .ToList();
+
+        if (!emitResult.Success)
+        {
+            return new CompilationResult { Success = false, Diagnostics = diagnostics };
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+        File.WriteAllBytes(outputPath, peStream.ToArray());
+        File.WriteAllBytes(Path.ChangeExtension(outputPath, ".pdb"), pdbStream.ToArray());
+
+        return new CompilationResult { Success = true, OutputPath = outputPath, Diagnostics = diagnostics };
+
+        static CompilationResult Failure(string message) => new() { Success = false, Error = message };
+    }
+
+    /// <summary>
+    /// A shortcut for compiling a single source string to .dll.
     /// </summary>
     /// <param name="sourceCode">A source code to compile</param>
-    /// <param name="outputPath">A path to save .dll and runtimeconfig.</param>
+    /// <param name="outputPath">A path to save .dll.</param>
     /// <param name="createExe">Does it will executable.</param>
     /// <returns>Result of compilation, true if successfully, false if failed.</returns>
     public static bool Compile(string sourceCode, string outputPath, bool createExe = false)
     {
-        var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
-
-        var globalUsingsTree = CSharpSyntaxTree.ParseText("""
-                                                              global using System;
-                                                              global using System.IO;
-                                                              global using System.Linq;
-                                                              global using System.Collections.Generic;
-                                                              global using System.Threading;
-                                                              global using System.Threading.Tasks;
-                                                          """);
-
-        var outputKind = createExe ? OutputKind.ConsoleApplication : OutputKind.DynamicallyLinkedLibrary;
-
-        var options = new CSharpCompilationOptions(outputKind, optimizationLevel: OptimizationLevel.Release,
-            allowUnsafe: false);
-
-        var references = AppDomain.CurrentDomain.GetAssemblies()
-            .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))
-            .Select(a => MetadataReference.CreateFromFile(a.Location))
-            .Cast<MetadataReference>()
-            .ToHashSet();
-
-        if (AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") is string trustedAssemblies)
+        var result = Compile(new CompilationRequest
         {
-            var paths = trustedAssemblies.Split(Path.PathSeparator);
-            foreach (var path in paths)
-            {
-                if (File.Exists(path))
-                {
-                    references.Add(MetadataReference.CreateFromFile(path));
-                }
-            }
-        }
-
-        var finalReferences = references.ToList();
-
-        var assemblyName = Path.GetFileNameWithoutExtension(outputPath);
-        var compilation = CSharpCompilation.Create(
-            assemblyName,
-            syntaxTrees: [syntaxTree, globalUsingsTree],
-            references: finalReferences,
-            options: options
-        );
-
-        var result = compilation.Emit(outputPath);
+            OutputPath = outputPath,
+            Sources = [new SourceFile("Program.cs", sourceCode)],
+            IsExecutable = createExe
+        });
 
         if (!result.Success)
         {
             Console.WriteLine("Ошибка компиляции:");
-            foreach (var diagnostic in result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))
+
+            if (result.Error != null)
             {
-                Console.WriteLine($"\t{diagnostic.Id}: {diagnostic.GetMessage()}");
+                Console.WriteLine($"\t{result.Error}");
+            }
+
+            foreach (var diagnostic in result.Errors)
+            {
+                Console.WriteLine($"\t{diagnostic}");
             }
 
             return false;
         }
 
-        Console.WriteLine($"Успешно скомпилировано в: {outputPath}");
+        Console.WriteLine($"Успешно скомпилировано в: {result.OutputPath}");
         return true;
     }
 }
