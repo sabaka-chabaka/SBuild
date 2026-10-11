@@ -204,6 +204,20 @@ public static class AppActions
         });
     }
 
+    /// <summary>
+    /// New gitignore command
+    /// </summary>
+    /// <returns>Lambda</returns>
+    public static Func<ParseResult, CancellationToken, Task<int>> ExecuteNewGitignoreAsync()
+    {
+        return Sync((_, _) =>
+        {
+            File.WriteAllText(".gitignore", ".idea\nbin\nobj");
+            
+            return 0;
+        });
+    }
+
     private static ProjectBuilder CreateBuilder(bool quiet)
     {
         var builder = new ProjectBuilder();

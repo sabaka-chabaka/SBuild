@@ -93,6 +93,10 @@ public static class AppCommands
         project.SetAction(AppActions.ExecuteNewProjectAsync(projectName, projectType, projectSolution, projectOutput));
         command.Subcommands.Add(project);
 
+        var gitignore = new Command("gitignore", "Creates a gitignore file");
+        gitignore.SetAction(AppActions.ExecuteNewGitignoreAsync());
+        command.Subcommands.Add(gitignore);
+
         return command;
     }
 
