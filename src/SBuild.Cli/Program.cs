@@ -1,7 +1,7 @@
 using System.CommandLine;
 using SBuild.Cli;
 
-var rootCommand = new RootCommand("SabakaBuild");
+var rootCommand = new RootCommand("SabakaBuild root command");
 
 foreach (var command in AppCommands.All())
 {
