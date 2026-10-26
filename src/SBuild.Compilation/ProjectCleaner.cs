@@ -34,7 +34,7 @@ public static class ProjectCleaner
         }
 
         var basePath = Path.Combine(outputDirectory, project.Name);
-        foreach (var file in new[] { basePath + ".dll", basePath + ".pdb", basePath + ".runtimeconfig.json" })
+        foreach (var file in new[] { basePath + ".dll", basePath + ".pdb", basePath + ".runtimeconfig.json", basePath + ".sbuildcache" })
         {
             if (File.Exists(file))
             {

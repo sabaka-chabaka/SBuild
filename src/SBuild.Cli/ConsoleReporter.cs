@@ -37,7 +37,8 @@ internal static class ConsoleReporter
 
             if (!quiet)
             {
-                Success($"  {result.Project.Name} -> {result.OutputPath}");
+                var status = result.IsUpToDate ? " [Up-to-date]" : string.Empty;
+                Success($"  {result.Project.Name} -> {result.OutputPath}{status}");
                 Info($"Assembly checksum: {Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(result.OutputPath))).ToLowerInvariant()}");
             }
 

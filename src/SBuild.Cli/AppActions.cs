@@ -17,13 +17,20 @@ public static class AppActions
     /// </summary>
     /// <param name="path">Path to a c# file, a project, a solution or a directory.</param>
     /// <param name="isExecutable">Does .dll will executable (single .cs file only).</param>
+    /// <param name="force">Force full rebuild.</param>
+    /// <param name="noIncremental">Disable incremental compilation.</param>
     /// <returns>Lambda</returns>
-    public static Func<ParseResult, CancellationToken, Task<int>> ExecuteBuildAsync(Option<string> path, Option<bool> isExecutable)
+    public static Func<ParseResult, CancellationToken, Task<int>> ExecuteBuildAsync(
+        Option<string> path,
+        Option<bool> isExecutable,
+        Option<bool> force,
+        Option<bool> noIncremental)
     {
         return Sync((parseResult, cancellationToken) =>
         {
             var target = ManifestLocator.Locate(parseResult.GetValue(path));
-            var builder = CreateBuilder(quiet: false);
+            var forceRebuild = parseResult.GetValue(force) || parseResult.GetValue(noIncremental);
+            var builder = CreateBuilder(quiet: false, incremental: !forceRebuild);
 
             var summary = Build(builder, target, parseResult.GetValue(isExecutable), cancellationToken);
 
@@ -37,14 +44,21 @@ public static class AppActions
     /// </summary>
     /// <param name="path">Path to a c# file, a project, a solution or a directory.</param>
     /// <param name="programArguments">Arguments for the program.</param>
-    public static Func<ParseResult, CancellationToken, Task<int>> ExecuteRunAsync(Option<string> path, Argument<string[]> programArguments)
+    /// <param name="force">Force full rebuild.</param>
+    /// <param name="noIncremental">Disable incremental compilation.</param>
+    public static Func<ParseResult, CancellationToken, Task<int>> ExecuteRunAsync(
+        Option<string> path,
+        Argument<string[]> programArguments,
+        Option<bool> force,
+        Option<bool> noIncremental)
     {
         return async (parseResult, cancellationToken) =>
         {
             try
             {
                 var target = ManifestLocator.Locate(parseResult.GetValue(path));
-                var builder = CreateBuilder(quiet: true);
+                var forceRebuild = parseResult.GetValue(force) || parseResult.GetValue(noIncremental);
+                var builder = CreateBuilder(quiet: true, incremental: !forceRebuild);
 
                 var summary = Build(builder, target, executable: true, cancellationToken);
 
@@ -218,9 +232,9 @@ public static class AppActions
         });
     }
 
-    private static ProjectBuilder CreateBuilder(bool quiet)
+    private static ProjectBuilder CreateBuilder(bool quiet, bool incremental = true)
     {
-        var builder = new ProjectBuilder();
+        var builder = new ProjectBuilder { Incremental = incremental };
         builder.ProjectBuilt += result => ConsoleReporter.PrintResult(result, quiet);
         return builder;
     }

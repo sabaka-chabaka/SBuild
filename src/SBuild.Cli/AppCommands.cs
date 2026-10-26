@@ -26,12 +26,14 @@ public static class AppCommands
     {
         var path = AppOptions.FilePath();
         var isExecutable = AppOptions.IsExecutable();
+        var force = AppOptions.Force();
+        var noIncremental = AppOptions.NoIncremental();
 
         var command = new Command("build", "Builds a solution, a project or a single csharp file")
         {
-            path, isExecutable
+            path, isExecutable, force, noIncremental
         };
-        command.SetAction(AppActions.ExecuteBuildAsync(path, isExecutable));
+        command.SetAction(AppActions.ExecuteBuildAsync(path, isExecutable, force, noIncremental));
         return command;
     }
 
@@ -42,12 +44,14 @@ public static class AppCommands
     {
         var path = AppOptions.FilePath();
         var args = AppOptions.ProgramArguments();
+        var force = AppOptions.Force();
+        var noIncremental = AppOptions.NoIncremental();
 
         var command = new Command("run", "Builds and runs an executable project or csharp file")
         {
-            path, args
+            path, args, force, noIncremental
         };
-        command.SetAction(AppActions.ExecuteRunAsync(path, args));
+        command.SetAction(AppActions.ExecuteRunAsync(path, args, force, noIncremental));
         return command;
     }
 

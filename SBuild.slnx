@@ -5,6 +5,7 @@
         <Project Path="src/SBuild.Manifests/SBuild.Manifests.csproj" />
         <Project Path="src/SBuild.ProjectGeneration/SBuild.ProjectGeneration.csproj" />
     </Folder>
-    <Folder Name="/tests/">   
+    <Folder Name="/tests/">
+        <Project Path="tests/SBuild.Tests/SBuild.Tests.csproj" />
     </Folder>
 </Solution>

@@ -21,6 +21,11 @@ public sealed class ProjectBuildResult
     public required bool Success { get; init; }
 
     /// <summary>
+    /// True when compilation was skipped because inputs and outputs were already up to date.
+    /// </summary>
+    public bool IsUpToDate { get; init; }
+
+    /// <summary>
     /// Path of the produced <c>.dll</c> (empty on failure).
     /// </summary>
     public string OutputPath { get; init; } = string.Empty;
@@ -83,6 +88,11 @@ public sealed class ProjectBuilder
     private readonly Dictionary<string, ProjectBuildResult> _cache = new(StringComparer.Ordinal);
     private readonly List<ProjectBuildResult> _results = [];
     private readonly List<string> _stack = [];
+
+    /// <summary>
+    /// Whether incremental compilation is enabled (default is true).
+    /// </summary>
+    public bool Incremental { get; set; } = true;
 
     /// <summary>
     /// Raised right after each project has been built (successfully or not), in build order.
@@ -208,6 +218,7 @@ public sealed class ProjectBuilder
         var compileReferences = new List<string>();
         var runtimeDependencies = new List<string>();
         var referenceErrors = new List<string>();
+        var anyDependencyRebuilt = false;
 
         foreach (var reference in project.References)
         {
@@ -247,6 +258,11 @@ public sealed class ProjectBuilder
             {
                 referenceErrors.Add($"Не удалось собрать зависимость '{dependency.Project.Name}'.");
                 continue;
+            }
+
+            if (!dependency.IsUpToDate)
+            {
+                anyDependencyRebuilt = true;
             }
 
             AddUnique(compileReferences, dependency.OutputPath);
@@ -289,6 +305,21 @@ public sealed class ProjectBuilder
 
         var outputPath = Path.Combine(outputDirectory, project.Name + ".dll");
 
+        if (Incremental && IncrementalBuildCache.CheckUpToDate(project, sources, compileReferences, runtimeDependencies, outputPath, anyDependencyRebuilt))
+        {
+            return new ProjectBuildResult
+            {
+                Project = project,
+                Success = true,
+                IsUpToDate = true,
+                OutputPath = outputPath,
+                Diagnostics = [],
+                Notes = notes,
+                SourceCount = sources.Count,
+                RuntimeDependencies = runtimeDependencies
+            };
+        }
+
         try
         {
             var request = new CompilationRequest
@@ -309,6 +340,7 @@ public sealed class ProjectBuilder
                 {
                     Project = project,
                     Success = false,
+                    IsUpToDate = false,
                     Diagnostics = compilation.Diagnostics,
                     Error = compilation.Error,
                     Notes = notes,
@@ -326,10 +358,13 @@ public sealed class ProjectBuilder
                 CopyToOutput(dependency, outputDirectory);
             }
 
+            IncrementalBuildCache.RecordState(project, sources, compileReferences, runtimeDependencies, outputPath);
+
             return new ProjectBuildResult
             {
                 Project = project,
                 Success = true,
+                IsUpToDate = false,
                 OutputPath = compilation.OutputPath,
                 Diagnostics = compilation.Diagnostics,
                 Notes = notes,

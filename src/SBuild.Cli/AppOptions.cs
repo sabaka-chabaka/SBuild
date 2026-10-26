@@ -27,6 +27,22 @@ public static class AppOptions
     };
 
     /// <summary>
+    /// Forces a full rebuild ignoring incremental build cache.
+    /// </summary>
+    public static Option<bool> Force() => new("--force", "-f")
+    {
+        Description = "Forces a full rebuild of all projects ignoring the incremental build cache."
+    };
+
+    /// <summary>
+    /// Disables incremental compilation.
+    /// </summary>
+    public static Option<bool> NoIncremental() => new("--no-incremental")
+    {
+        Description = "Disables incremental build and forces all projects to recompile."
+    };
+
+    /// <summary>
     /// Directory in which something is created.
     /// </summary>
     public static Option<string> OutputDirectory() => new("--output", "-o")
